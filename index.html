@@ -1,0 +1,645 @@
+<!doctype html>
+<html lang="uz">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Maxfiy Kod Ovi</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=JetBrains+Mono:wght@400;500;700&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      * {
+        font-family: "JetBrains Mono", monospace;
+      }
+      h1,
+      .display {
+        font-family: "Space Grotesk", sans-serif;
+      }
+
+      body {
+        background: #fbfaf7;
+        background-image:
+          radial-gradient(
+            ellipse 60% 40% at 15% 0%,
+            rgba(0, 178, 110, 0.08),
+            transparent
+          ),
+          radial-gradient(
+            ellipse 50% 40% at 100% 100%,
+            rgba(255, 63, 128, 0.07),
+            transparent
+          );
+      }
+
+      .card {
+        background: #ffffff;
+        border: 2px solid #10241c;
+        box-shadow: 8px 8px 0 #10241c;
+      }
+
+      .btn-primary {
+        background: #00b26e;
+        border: 2px solid #10241c;
+        box-shadow: 4px 4px 0 #10241c;
+        transition:
+          transform 0.12s ease,
+          box-shadow 0.12s ease;
+      }
+      .btn-primary:active {
+        transform: translate(4px, 4px);
+        box-shadow: 0 0 0 #10241c;
+      }
+
+      .chip {
+        border: 2px solid #10241c;
+        box-shadow: 3px 3px 0 #10241c;
+      }
+
+      .glitch-wrap {
+        position: relative;
+        display: inline-block;
+      }
+      .glitch-wrap .layer {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+      }
+      @keyframes glitch {
+        0%,
+        100% {
+          clip-path: inset(0 0 0 0);
+          transform: translate(0, 0);
+        }
+        20% {
+          clip-path: inset(10% 0 60% 0);
+          transform: translate(-2px, 0);
+        }
+        40% {
+          clip-path: inset(60% 0 5% 0);
+          transform: translate(2px, 0);
+        }
+        60% {
+          clip-path: inset(30% 0 40% 0);
+          transform: translate(-1px, 0);
+        }
+        80% {
+          clip-path: inset(5% 0 70% 0);
+          transform: translate(1px, 0);
+        }
+      }
+      .glitch-wrap .layer-green {
+        color: #00b26e;
+        animation: glitch 2.6s infinite linear;
+      }
+      .glitch-wrap .layer-pink {
+        color: #ff3f80;
+        animation: glitch 2.6s infinite linear reverse;
+      }
+
+      .shake {
+        animation: shake 0.4s;
+      }
+      @keyframes shake {
+        0%,
+        100% {
+          transform: translateX(0);
+        }
+        20% {
+          transform: translateX(-8px);
+        }
+        40% {
+          transform: translateX(8px);
+        }
+        60% {
+          transform: translateX(-6px);
+        }
+        80% {
+          transform: translateX(6px);
+        }
+      }
+
+      .confetti-piece {
+        position: absolute;
+        top: -10px;
+        width: 8px;
+        height: 14px;
+        opacity: 0.95;
+        animation: fall linear forwards;
+      }
+      @keyframes fall {
+        to {
+          transform: translateY(110vh) rotate(540deg);
+          opacity: 0.5;
+        }
+      }
+
+      input:focus {
+        outline: none;
+      }
+    </style>
+  </head>
+  <body
+    class="min-h-screen text-[#10241c] flex items-center justify-center p-6"
+  >
+    <div id="app" class="w-full max-w-xl"></div>
+
+    <div
+      id="confetti-layer"
+      class="fixed inset-0 overflow-hidden pointer-events-none z-30"
+    ></div>
+
+    <div data-status="ok" data-secret="hidden" class="hidden"></div>
+
+    <script>
+      const LOCAL_STORAGE_KEY = "aliCodeSecret";
+
+      const CODES = {
+        physical1: "s",
+        physical2: "3",
+        physical3: "b",
+        console: "LOG042",
+        storage: "STORE7",
+        inspect: "INSPEC",
+        riddle: "2013",
+        channelDate: "09/09/2025",
+      };
+
+      let cameraStream = null;
+
+      function initSecrets() {
+        localStorage.setItem(LOCAL_STORAGE_KEY, CODES.storage);
+
+        console.log(
+          "%c🔐 MAXFIY KOD 1: %c" + CODES.console,
+          "color:#8a8a8a;font-size:14px;",
+          "color:#00b26e;font-size:22px;font-weight:bold;",
+        );
+        console.log(
+          "%cYana bittasi localStorage'da yashiringan.",
+          "color:#8a8a8a;font-size:12px;",
+        );
+
+        const marker = document.querySelector('[data-status="ok"]');
+        marker.setAttribute("data-secret", CODES.inspect);
+      }
+
+      function finalKey() {
+        return (
+          CODES.physical1 +
+          CODES.physical2 +
+          CODES.physical3 +
+          CODES.console +
+          CODES.storage +
+          CODES.inspect +
+          CODES.riddle +
+          CODES.channelDate
+        )
+          .trim()
+          .toLowerCase();
+      }
+
+      function isKeyValid(input) {
+        const cleanInput = input.trim().toLowerCase();
+        const target = finalKey().toLowerCase();
+        const targetNoSlash = target.replace(/[\/\-\s]/g, "");
+        const inputNoSlash = cleanInput.replace(/[\/\-\s]/g, "");
+        return cleanInput === target || inputNoSlash === targetNoSlash;
+      }
+
+      async function requestCamera() {
+        try {
+          cameraStream = await navigator.mediaDevices.getUserMedia({
+            video: true,
+          });
+        } catch (e) {
+          cameraStream = null;
+        }
+      }
+
+      function playVictoryCelebrationSong() {
+        try {
+          const AudioContext = window.AudioContext || window.webkitAudioContext;
+          const ctx = new AudioContext();
+          if (ctx.state === "suspended") {
+            ctx.resume();
+          }
+
+          const now = ctx.currentTime;
+          const tempo = 150;
+          const beat = 60 / tempo; // ~0.4s
+
+          function playSynth(
+            freq,
+            start,
+            duration,
+            type = "triangle",
+            vol = 0.18,
+          ) {
+            if (!freq || freq <= 0) return;
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+            osc.type = type;
+            osc.frequency.setValueAtTime(freq, start);
+
+            gain.gain.setValueAtTime(0.0001, start);
+            gain.gain.exponentialRampToValueAtTime(vol, start + 0.02);
+            gain.gain.setValueAtTime(vol * 0.85, start + duration * 0.7);
+            gain.gain.exponentialRampToValueAtTime(0.0001, start + duration);
+
+            osc.connect(gain);
+            gain.connect(ctx.destination);
+            osc.start(start);
+            osc.stop(start + duration + 0.05);
+          }
+
+          function playDrum(time, isSnare = false) {
+            if (!isSnare) {
+              const osc = ctx.createOscillator();
+              const gain = ctx.createGain();
+              osc.frequency.setValueAtTime(150, time);
+              osc.frequency.exponentialRampToValueAtTime(35, time + 0.12);
+              gain.gain.setValueAtTime(0.35, time);
+              gain.gain.exponentialRampToValueAtTime(0.001, time + 0.14);
+              osc.connect(gain);
+              gain.connect(ctx.destination);
+              osc.start(time);
+              osc.stop(time + 0.15);
+            } else {
+              const bufferSize = ctx.sampleRate * 0.12;
+              const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+              const data = buffer.getChannelData(0);
+              for (let i = 0; i < bufferSize; i++) {
+                data[i] =
+                  (Math.random() * 2 - 1) * Math.exp(-i / (bufferSize * 0.25));
+              }
+              const noise = ctx.createBufferSource();
+              noise.buffer = buffer;
+              const gain = ctx.createGain();
+              gain.gain.setValueAtTime(0.22, time);
+              gain.gain.exponentialRampToValueAtTime(0.001, time + 0.12);
+              noise.connect(gain);
+              gain.connect(ctx.destination);
+              noise.start(time);
+            }
+          }
+
+          // Notalar chastotasi
+          const C3 = 130.81,
+            E3 = 164.81,
+            F3 = 174.61,
+            G3 = 196.0,
+            A3 = 220.0;
+          const C4 = 261.63,
+            E4 = 329.63,
+            F4 = 349.23,
+            G4 = 392.0,
+            A4 = 440.0,
+            B4 = 493.88;
+          const C5 = 523.25,
+            D5 = 587.33,
+            E5 = 659.25,
+            F5 = 698.46,
+            G5 = 783.99,
+            A5 = 880.0,
+            B5 = 987.77,
+            C6 = 1046.5;
+
+          // 1. Tantanali Fanfara Intro (0 - 1.2s)
+          const fanfare = [
+            { f: C5, t: 0, d: 0.11 },
+            { f: E5, t: 0.11, d: 0.11 },
+            { f: G5, t: 0.22, d: 0.11 },
+            { f: C6, t: 0.33, d: 0.35 },
+            { f: G5, t: 0.7, d: 0.14 },
+            { f: C6, t: 0.86, d: 0.55 },
+          ];
+          fanfare.forEach((n) => {
+            playSynth(n.f, now + n.t, n.d, "square", 0.2);
+            playSynth(n.f / 2, now + n.t, n.d, "sawtooth", 0.12);
+          });
+
+          // 2. Ko'tarinki, bayramona quvnoq musiqa (1.5s dan boshlab)
+          const melStart = now + 1.45;
+          const melody = [
+            { f: E5, b: 0, d: 0.4 },
+            { f: G5, b: 0.5, d: 0.4 },
+            { f: C6, b: 1.0, d: 0.6 },
+            { f: B5, b: 1.7, d: 0.3 },
+            { f: A5, b: 2.0, d: 0.4 },
+            { f: G5, b: 2.5, d: 0.6 },
+            { f: E5, b: 3.2, d: 0.4 },
+            { f: F5, b: 3.6, d: 0.4 },
+            { f: G5, b: 4.0, d: 0.5 },
+            { f: A5, b: 4.5, d: 0.5 },
+            { f: G5, b: 5.0, d: 0.8 },
+            { f: C5, b: 6.0, d: 0.4 },
+            { f: E5, b: 6.5, d: 0.4 },
+            { f: G5, b: 7.0, d: 0.4 },
+            { f: C6, b: 7.5, d: 1.2 },
+            // Yakuniy akkord qismi
+            { f: E5, b: 9.0, d: 0.3 },
+            { f: G5, b: 9.3, d: 0.3 },
+            { f: C6, b: 9.6, d: 1.5 },
+          ];
+
+          melody.forEach((n) => {
+            const t = melStart + n.b * (beat * 0.65);
+            const dur = n.d * (beat * 0.65);
+            playSynth(n.f, t, dur, "triangle", 0.22);
+            playSynth(n.f, t, dur, "square", 0.12);
+          });
+
+          // Bass partiyasi
+          const bass = [
+            { f: C3, b: 0 },
+            { f: C3, b: 1 },
+            { f: E3, b: 2 },
+            { f: G3, b: 3 },
+            { f: F3, b: 4 },
+            { f: G3, b: 5 },
+            { f: A3, b: 6 },
+            { f: G3, b: 7 },
+            { f: C4, b: 8 },
+            { f: G3, b: 9 },
+            { f: C3, b: 10 },
+          ];
+          bass.forEach((b) => {
+            const t = melStart + b.b * (beat * 0.65);
+            playSynth(b.f, t, beat * 0.6, "sawtooth", 0.16);
+          });
+
+          // Ritm / Baraban zarblari
+          for (let step = 0; step < 22; step++) {
+            const t = melStart + step * (beat * 0.325);
+            if (step % 4 === 0) playDrum(t, false);
+            else if (step % 4 === 2) playDrum(t, true);
+          }
+        } catch (e) {
+          console.log("Audio not supported or blocked", e);
+        }
+      }
+
+      function spawnConfetti() {
+        const layer = document.getElementById("confetti-layer");
+        const colors = [
+          "#00b26e",
+          "#ff3f80",
+          "#ffb703",
+          "#3f8dff",
+          "#9b5de5",
+          "#00f5d4",
+        ];
+
+        function addBatch(count) {
+          for (let i = 0; i < count; i++) {
+            const piece = document.createElement("div");
+            piece.className = "confetti-piece";
+            piece.style.left = Math.random() * 100 + "vw";
+            piece.style.background =
+              colors[Math.floor(Math.random() * colors.length)];
+            piece.style.animationDuration = 2.0 + Math.random() * 2.5 + "s";
+            piece.style.animationDelay = Math.random() * 0.5 + "s";
+            piece.style.width = Math.random() * 8 + 6 + "px";
+            piece.style.height = Math.random() * 12 + 10 + "px";
+            layer.appendChild(piece);
+            setTimeout(() => piece.remove(), 5500);
+          }
+        }
+
+        // To'lqin shaklida ko'plab salyut / konfetti
+        addBatch(80);
+        setTimeout(() => addBatch(60), 800);
+        setTimeout(() => addBatch(50), 1600);
+      }
+
+      function renderStart() {
+        const app = document.getElementById("app");
+        app.className = "w-full max-w-xl";
+        app.innerHTML = `
+        <div class="card rounded-2xl overflow-hidden">
+          <div class="flex items-center gap-2 px-4 py-3 border-b-2 border-[#10241c] bg-[#f3f1ea]">
+            <span class="chip w-3 h-3 rounded-full bg-[#ff3f80]"></span>
+            <span class="chip w-3 h-3 rounded-full bg-[#ffb703]"></span>
+            <span class="chip w-3 h-3 rounded-full bg-[#00b26e]"></span>
+            <span class="ml-3 text-xs text-[#5c6b63]">ali@code: ~/access</span>
+          </div>
+          <div class="p-8 sm:p-10 text-center">
+            <div class="glitch-wrap display text-3xl sm:text-4xl font-bold mb-6">
+              <span class="layer layer-pink" aria-hidden="true">KIRISH TERMINALI</span>
+              <span class="layer layer-green" aria-hidden="true">KIRISH TERMINALI</span>
+              <span class="text-[#10241c]">KIRISH TERMINALI</span>
+            </div>
+            <p class="text-[#5c6b63] text-sm leading-relaxed mb-8">
+              Tizimga kirish uchun 8 ta maxfiy kod kerak.<br>
+              Ularni topib, bitta yakuniy kalitga birlashtirasan.
+            </p>
+            <button id="startBtn" class="px-6 py-3 rounded-lg btn-primary text-white font-bold tracking-tight">
+              &gt; Boshlash
+            </button>
+            <p class="text-xs text-[#8a8a8a] mt-4">Kamera ruxsati so'raladi — faqat g'alaba lahzasi uchun.</p>
+          </div>
+        </div>
+      `;
+        document
+          .getElementById("startBtn")
+          .addEventListener("click", async () => {
+            await requestCamera();
+            initSecrets();
+            renderGame();
+          });
+      }
+
+      function renderGame(errorMsg) {
+        const app = document.getElementById("app");
+        app.className = "w-full max-w-xl";
+
+        app.innerHTML = `
+        <div class="card rounded-2xl overflow-hidden">
+          <div class="flex items-center gap-2 px-4 py-3 border-b-2 border-[#10241c] bg-[#f3f1ea]">
+            <span class="chip w-3 h-3 rounded-full bg-[#ff3f80]"></span>
+            <span class="chip w-3 h-3 rounded-full bg-[#ffb703]"></span>
+            <span class="chip w-3 h-3 rounded-full bg-[#00b26e]"></span>
+            <span class="ml-3 text-xs text-[#5c6b63]">ali@code: ~/decrypt</span>
+          </div>
+          <div id="gameBody" class="p-6 sm:p-8">
+            <p class="text-sm text-[#5c6b63] mb-4">8 ta kodni top va ularni <span class="font-bold text-[#00b26e]">ketma-ket, bo'shliqsiz</span> birlashtirib, yagona kalit sifatida kirit.</p>
+
+            <div class="space-y-3 mb-6">
+              <div class="p-3.5 bg-[#f3f1ea] border-2 border-[#10241c] rounded-xl shadow-[3px_3px_0_#10241c]">
+                <p class="text-xs font-bold text-[#10241c] mb-2 flex items-center gap-1.5">
+                  <span>📌</span> Kodlarni kiritish tartibi (1 ➔ 8):
+                </p>
+                <div class="space-y-1.5 text-xs text-[#10241c]">
+                  <div class="flex items-center gap-2 bg-white px-3 py-1.5 rounded-lg border border-[#10241c]/30">
+                    <span class="font-bold text-[#00b26e]">1-2-3:</span> Xona yoki kompyuterdan topilgan 3 ta kod
+                  </div>
+                  <div class="flex items-center gap-2 bg-white px-3 py-1.5 rounded-lg border border-[#10241c]/30">
+                    <span class="font-bold text-[#00b26e]">4-5-6-7:</span> Veb-saytning o'zidan topiladigan 4 ta kod
+                  </div>
+                  <div class="flex items-center gap-2 bg-white px-3 py-1.5 rounded-lg border border-[#10241c]/30">
+                    <span class="font-bold text-[#00b26e]">8:</span> AWS-27 kanali ochilgan sanasi (kun/oy/yil)
+                  </div>
+                </div>
+              </div>
+
+              <p class="text-xs text-[#ff3f80] font-bold">⚠️ Kodlarni aynan 1-dan 8-gacha ketma-ket, bo'shliqsiz bitta kalit qilib yozing.</p>
+            </div>
+
+            <label class="block text-xs text-[#5c6b63] mb-1">$ yakuniy_kalit</label>
+            <input id="finalInput" class="w-full mb-6 bg-[#fbfaf7] border-2 border-[#10241c] rounded-lg px-4 py-3 text-[#10241c] placeholder-[#b7b2a3] focus:bg-white" placeholder="kod1kod2kod3kod4kod5kod6kod7kod8">
+
+            ${errorMsg ? `<p class="text-[#ff3f80] font-bold text-sm mb-4">${errorMsg}</p>` : ""}
+
+            <button id="submitBtn" class="w-full py-3 rounded-lg btn-primary text-white font-bold">
+              Dekodlash
+            </button>
+          </div>
+        </div>
+      `;
+
+        document.getElementById("submitBtn").addEventListener("click", () => {
+          const value = document
+            .getElementById("finalInput")
+            .value.trim()
+            .toLowerCase();
+
+          if (isKeyValid(value)) {
+            renderSuccess();
+          } else {
+            const box = document.getElementById("gameBody");
+            box.classList.add("shake");
+            setTimeout(() => box.classList.remove("shake"), 400);
+            renderGame("❌ Noto'g'ri kalit. Qayta urinib ko'r.");
+          }
+        });
+      }
+
+      function renderSuccess() {
+        // Ekranni deyarli to'liq egallaydigan ulkan o'lcham
+        const app = document.getElementById("app");
+        app.className = "w-full max-w-5xl my-auto transition-all duration-300";
+
+        app.innerHTML = `
+        <div class="card rounded-3xl overflow-hidden text-center shadow-[12px_12px_0_#10241c]">
+          <div class="flex items-center justify-between px-5 py-3.5 border-b-2 border-[#10241c] bg-[#f3f1ea]">
+            <div class="flex items-center gap-2">
+              <span class="chip w-3.5 h-3.5 rounded-full bg-[#ff3f80]"></span>
+              <span class="chip w-3.5 h-3.5 rounded-full bg-[#ffb703]"></span>
+              <span class="chip w-3.5 h-3.5 rounded-full bg-[#00b26e]"></span>
+              <span class="ml-3 text-xs sm:text-sm font-bold text-[#5c6b63]">ali@code: ~/super_winner_access</span>
+            </div>
+            <span class="chip px-3 py-1 rounded-md text-xs sm:text-sm font-extrabold bg-[#00b26e] text-white shadow-[2px_2px_0_#10241c]">★ 100% ACCESS GRANTED ★</span>
+          </div>
+
+          <div class="p-4 sm:p-8">
+            <div class="glitch-wrap display text-4xl sm:text-6xl font-black mb-2 tracking-tight">
+              <span class="layer layer-pink" aria-hidden="true">G'ALABA! SIZ G'OLIBSIZ!</span>
+              <span class="layer layer-green" aria-hidden="true">G'ALABA! SIZ G'OLIBSIZ!</span>
+              <span class="text-[#00b26e]">G'ALABA! SIZ G'OLIBSIZ!</span>
+            </div>
+            <p class="text-[#5c6b63] text-sm sm:text-lg mb-5 font-semibold">🎉 Qoyilmaqom natija! Barcha 8 ta maxfiy kod muvaffaqiyatli topildi.</p>
+
+            <!-- Ekrandagi ulkan rasm / kamera maydoni -->
+            <div class="relative w-full max-w-4xl mx-auto h-[48vh] sm:h-[58vh] min-h-[320px] max-h-[580px] rounded-2xl overflow-hidden border-4 border-[#10241c] shadow-[10px_10px_0_#10241c] bg-[#10241c] mb-6">
+              <video id="cam" autoplay muted playsinline class="w-full h-full object-cover"></video>
+              <canvas id="snap" class="w-full h-full object-cover hidden"></canvas>
+              
+              <!-- Kamera chaqnashi (flash) effekti -->
+              <div id="flash-effect" class="absolute inset-0 bg-white opacity-0 pointer-events-none transition-opacity duration-300"></div>
+
+              <!-- G'olib nishoni -->
+              <div id="winner-badge" class="hidden absolute bottom-4 right-4 bg-[#ffb703] text-[#10241c] border-2 border-[#10241c] shadow-[3px_3px_0_#10241c] px-4 py-2 rounded-xl text-sm font-extrabold flex items-center gap-2 animate-bounce">
+                <span class="text-xl">👑</span> G'OLIBLAR
+              </div>
+            </div>
+
+            <div class="flex flex-col sm:flex-row items-center justify-between gap-4 max-w-4xl mx-auto bg-[#f3f1ea] p-4 rounded-xl border-2 border-[#10241c]">
+              <div class="flex items-center gap-3">
+                <div id="statusDot" class="w-3.5 h-3.5 rounded-full bg-[#ff3f80] animate-ping"></div>
+                <p id="camNote" class="text-xs sm:text-sm text-[#10241c] font-bold">Suratga olinmoqda, tabassum qiling... 📸</p>
+              </div>
+
+              <div id="actionBtns" class="hidden flex items-center gap-3 w-full sm:w-auto">
+                <button id="downloadBtn" class="flex-1 sm:flex-initial px-4 py-2 rounded-lg bg-[#00b26e] text-white text-xs sm:text-sm font-bold border-2 border-[#10241c] shadow-[3px_3px_0_#10241c] hover:translate-y-0.5 active:translate-y-1">
+                  💾 Suratni yuklash
+                </button>
+                <button id="replayBtn" class="flex-1 sm:flex-initial px-4 py-2 rounded-lg bg-[#fbfaf7] text-[#10241c] text-xs sm:text-sm font-bold border-2 border-[#10241c] shadow-[3px_3px_0_#10241c] hover:translate-y-0.5 active:translate-y-1">
+                  🔄 Qayta o'ynash
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      `;
+
+        spawnConfetti();
+        playVictoryCelebrationSong();
+
+        const video = document.getElementById("cam");
+        const statusDot = document.getElementById("statusDot");
+        const flashEffect = document.getElementById("flash-effect");
+        const winnerBadge = document.getElementById("winner-badge");
+        const actionBtns = document.getElementById("actionBtns");
+        const canvas = document.getElementById("snap");
+
+        if (cameraStream) {
+          video.srcObject = cameraStream;
+          setTimeout(() => {
+            canvas.width = video.videoWidth || 1920;
+            canvas.height = video.videoHeight || 1080;
+            const ctx = canvas.getContext("2d");
+            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+            // Kamera chaqnashi (flash)
+            if (flashEffect) {
+              flashEffect.style.opacity = "0.9";
+              setTimeout(() => {
+                flashEffect.style.opacity = "0";
+              }, 250);
+            }
+
+            video.classList.add("hidden");
+            canvas.classList.remove("hidden");
+            if (winnerBadge) winnerBadge.classList.remove("hidden");
+            if (actionBtns) actionBtns.classList.remove("hidden");
+            if (statusDot) {
+              statusDot.className = "w-3.5 h-3.5 rounded-full bg-[#00b26e]";
+            }
+
+            cameraStream.getTracks().forEach((t) => t.stop());
+            document.getElementById("camNote").textContent =
+              "✅ Suratingiz HD sifatda olindi!";
+
+            // Yuklab olish tugmasi
+            document
+              .getElementById("downloadBtn")
+              .addEventListener("click", () => {
+                const link = document.createElement("a");
+                link.download = "alicode-maxfiy-kalit-golibi.png";
+                link.href = canvas.toDataURL("image/png");
+                link.click();
+              });
+
+            // Qayta o'ynash tugmasi
+            document
+              .getElementById("replayBtn")
+              .addEventListener("click", () => {
+                renderStart();
+              });
+          }, 1800);
+        } else {
+          if (statusDot)
+            statusDot.className = "w-3.5 h-3.5 rounded-full bg-[#ff3f80]";
+          document.getElementById("camNote").textContent =
+            "Kamera ruxsati berilmagan edi — surat olinmadi.";
+        }
+      }
+
+      renderStart();
+    </script>
+  </body>
+</html>
